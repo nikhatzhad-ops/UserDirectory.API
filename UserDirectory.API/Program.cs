@@ -1,70 +1,96 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using UserDirectory.API.Data;
-using UserDirectory.API.Models;
+using System.IO;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuration: connection string from appsettings.json or default to /data/app.db
-var conn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=/data/app.db";
+// Configuration: connection string from appsettings.json or default to data/app.db
+var conn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=data/app.db";
 
 // Add services to the container.
 builder.Services.AddControllers();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+
+// Authentication: JWT/OIDC (configure via appsettings: Jwt:Authority and Jwt:Audience)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Jwt:Authority"];
+        options.Audience = builder.Configuration["Jwt:Audience"];
+        // For development/testing with an authority that doesn't use HTTPS, you can set RequireHttpsMetadata = false
+        // options.RequireHttpsMetadata = false;
+    });
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    // Add JWT Bearer to Swagger UI
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Enter JWT Bearer token as: Bearer {token}",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
+builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(conn));
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Optional: JWT Bearer authentication (uncomment and configure if needed)
-// var jwtSection = builder.Configuration.GetSection("Jwt");
-// if (jwtSection.Exists())
-// {
-//     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//         .AddJwtBearer(options =>
-        // {
-        //     options.TokenValidationParameters = new TokenValidationParameters
-        //     {
-        //         ValidateIssuer = true,
-        //         ValidateAudience = true,
-        //         ValidateLifetime = true,
-        //         ValidateIssuerSigningKey = true,
-        //         ValidIssuer = jwtSection["Issuer"],
-        //         ValidAudience = jwtSection["Audience"],
-        //         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]))
-        //     };
-        // });
-    // builder.Services.AddAuthorization();
-    // }
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReact",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 var app = builder.Build();
 
-// Ensure database created and optionally seed
+// Ensure data directory exists for SQLite
+Directory.CreateDirectory("data");
+
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
-    if (!db.Users.Any())
-    {
-        db.Users.AddRange(
-            new User { FirstName = "Alice", LastName = "Smith", Email = "alice@example.com" },
-            new User { FirstName = "Bob", LastName = "Jones", Email = "bob@example.com" }
-        );
-        db.SaveChanges();
-    }
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
 }
 
-// Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors("AllowReact");
 
 app.UseHttpsRedirection();
 
-// If you enable JWT, enable the authentication/authorization middleware
-// app.UseAuthentication();
+// Enable Authentication & Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
