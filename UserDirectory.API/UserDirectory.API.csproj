@@ -14,4 +14,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0-rc.2.24074.1" PrivateAssets="all" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\UserDirectory.Infrastructure\UserDirectory.Infrastructure.csproj" />
+    <ProjectReference Include="..\UserDirectory.Application\UserDirectory.Application.csproj" />
+    <ProjectReference Include="..\UserDirectory.Domain\UserDirectory.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UserDirectory.API.Data;
-using UserDirectory.API.DTOs;
-using UserDirectory.API.Models;
+using UserDirectory.Application.DTOs;
+using UserDirectory.Domain.Models;
+using UserDirectory.Infrastructure.Data;
 
 namespace UserDirectory.API.Controllers
 {

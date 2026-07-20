@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using UserDirectory.API.Data;
+using UserDirectory.Infrastructure.Data;
 using System.IO;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;

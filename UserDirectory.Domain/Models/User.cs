@@ -1,16 +1,20 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace UserDirectory.API.DTOs
+namespace UserDirectory.Domain.Models
 {
-    public class CreateUserDto
+    public class User
     {
+        public int Id { get; set; }
+
         [Required]
+        [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
 
         [Required]
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
 
+        [Phone]
         public string? Phone { get; set; }
     }
 }
